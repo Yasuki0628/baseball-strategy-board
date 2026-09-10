@@ -436,9 +436,31 @@
     return d;
   }
 
+  // Keep the entire token inside the field frame.
+  function getTokenHalfSize(t){
+    const r = t.el.getBoundingClientRect();
+    return { x: r.width * 0.5, y: r.height * 0.5 };
+  }
+
+  function clampTokenFraction(id, fx, fy, rect){
+    const t = tokens[id];
+    const half = getTokenHalfSize(t);
+    const minX = half.x / rect.width;
+    const maxX = 1 - minX;
+    const minY = half.y / rect.height;
+    const maxY = 1 - minY;
+    return {
+      fx: Math.max(minX, Math.min(maxX, fx)),
+      fy: Math.max(minY, Math.min(maxY, fy))
+    };
+  }
+
   function positionToken(id){
     const t = tokens[id];
     const rect = fieldWrap.getBoundingClientRect();
+    const p = clampTokenFraction(id, t.fx, t.fy, rect);
+    t.fx = p.fx;
+    t.fy = p.fy;
     t.el.style.left = (t.fx * rect.width) + 'px';
     t.el.style.top = (t.fy * rect.height) + 'px';
   }
@@ -479,8 +501,10 @@
       sx = Math.max(0, Math.min(rect.width, sx));
       sy = Math.max(0, Math.min(rect.height, sy));
       const local = screenToLocal(sx, sy, rect);
-      const lx = Math.max(0, Math.min(rect.width, local.x));
-      const ly = Math.max(0, Math.min(rect.height, local.y));
+      const halfW = elm.getBoundingClientRect().width * 0.5;
+      const halfH = elm.getBoundingClientRect().height * 0.5;
+      const lx = Math.max(halfW, Math.min(rect.width - halfW, local.x));
+      const ly = Math.max(halfH, Math.min(rect.height - halfH, local.y));
       tokens[id].fx = lx/rect.width;
       tokens[id].fy = ly/rect.height;
       elm.style.left = lx+'px';

@@ -1,16 +1,16 @@
 {
   "name": "野球戦略ボード",
-  "short_name": "戦略ボード",
-  "description": "スマートフォンで使える野球戦略ボード",
-  "start_url": "./",
+  "short_name": "野球戦略ボード",
+  "description": "野球の守備位置・走者・プレーを配置できる戦略ボード",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#16241a",
-  "theme_color": "#16241a",
+  "background_color": "#0f1712",
+  "theme_color": "#0f1712",
   "lang": "ja",
   "icons": [
-    {"src":"icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
   ]
 }
