@@ -74,13 +74,14 @@
     border:1px solid var(--panel-edge);
     border-radius:14px;
     overflow:hidden;
+    touch-action:none;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 6px 18px rgba(0,0,0,.35);
   }
   #stageRotate{ position:absolute; inset:0; width:100%; height:100%; transform-origin:50% 50%; transition:transform .45s cubic-bezier(.2,.8,.2,1); }
   #stageZoom{ position:absolute; inset:0; width:100%; height:100%; transform-origin:50% 68%; transition:transform .45s cubic-bezier(.2,.8,.2,1); }
-  svg#field{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-  canvas#draw{ position:absolute; inset:0; width:100%; height:100%; }
-  #tokenLayer{ position:absolute; inset:0; pointer-events:none; }
+  svg#field{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  canvas#draw{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  #tokenLayer{ position:absolute; inset:0; pointer-events:none; touch-action:none; }
 
   .token{
     position:absolute;
@@ -581,10 +582,18 @@
     }
   }
 
+  // Extra safety net: some mobile browsers (notably WKWebView-based Safari,
+  // especially inside an installed home-screen PWA) can still let a native
+  // scroll/refresh gesture win the race against Pointer Events, even with
+  // CSS touch-action:none on ancestors. Explicitly block the underlying
+  // touch events too (must be non-passive to allow preventDefault).
+  fieldWrap.addEventListener('touchstart', (e)=>{ if(currentMode !== 'move') e.preventDefault(); }, {passive:false});
+  fieldWrap.addEventListener('touchmove', (e)=>{ if(currentMode !== 'move') e.preventDefault(); }, {passive:false});
+
   draw.addEventListener('pointerdown', (e)=>{
     if(currentMode === 'move') return;
     e.preventDefault();
-    draw.setPointerCapture(e.pointerId);
+    try{ draw.setPointerCapture(e.pointerId); }catch(err){}
     const p = getPos(e);
     if(currentMode === 'pen'){
       currentStroke = {type:'pen', color: currentColor, points:[p]};
@@ -619,6 +628,8 @@
   draw.addEventListener('pointerup', finishStroke);
   draw.addEventListener('pointercancel', finishStroke);
   draw.addEventListener('lostpointercapture', finishStroke);
+  draw.addEventListener('pointerleave', (e)=>{ if(e.pointerType !== 'mouse') finishStroke(); });
+  draw.addEventListener('pointerout', (e)=>{ if(e.pointerType !== 'mouse') finishStroke(); });
 
   function eraseNear(p){
     const threshold = 18;
@@ -982,7 +993,28 @@
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // If an updated worker is already waiting (e.g. this fix was deployed
+      // while the app was cached from before), activate it right away.
+      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('SKIP_WAITING');
+          }
+        });
+      });
+    }).catch(console.error);
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
+  });
 }
 </script>
 </body>
